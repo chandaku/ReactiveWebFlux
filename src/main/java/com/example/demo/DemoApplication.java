@@ -151,7 +151,7 @@ class DataInitializer implements CommandLineRunner {
 }
 
 @RestController()
-@RequestMapping(value = "/posts")
+@RequestMapping(value = "/posts-deprecated")
 class PostController {
 
     private final PostRepository posts;
@@ -199,7 +199,8 @@ class PostRouterFunction {
 
     @Bean
     public RouterFunction<ServerResponse> routes(PostHandler postHandler) {
-        return route(GET("/posts/mono/").and(accept(MediaType.APPLICATION_JSON)), postHandler::findById);
+        return route(GET("/posts/").and(accept(MediaType.APPLICATION_JSON)), postHandler::findById)
+                .andRoute(GET("/posts/"), postHandler::findByTitle);
     }
 
 }
@@ -219,7 +220,8 @@ class PostHandler {
     }
 
     public Mono<ServerResponse> findByTitle(ServerRequest serverRequest){
-        Flux<Post> response = postRepository.findByTitle(serverRequest.queryParam("title").orElse(""));
+        String title = serverRequest.pathVariable("title");
+        Flux<Post> response = postRepository.findByTitle(title);
         return ServerResponse.ok().body(response,Post.class);
     }
 }
