@@ -199,8 +199,8 @@ class PostRouterFunction {
 
     @Bean
     public RouterFunction<ServerResponse> routes(PostHandler postHandler) {
-        return route(GET("/posts/").and(accept(MediaType.APPLICATION_JSON)), postHandler::findById)
-                .andRoute(GET("/posts/"), postHandler::findByTitle);
+        return route(GET("/posts/{id}").and(accept(MediaType.APPLICATION_JSON)), postHandler::findById)
+                .andRoute(GET("/posts/title/{title}"), postHandler::findByTitle);
     }
 
 }
@@ -215,7 +215,8 @@ class PostHandler {
     }
 
     public Mono<ServerResponse> findById(ServerRequest serverRequest){
-    return postRepository.findById(serverRequest.queryParam("id").orElse(""))
+        String id = serverRequest.pathVariable("id");
+        return postRepository.findById(id)
             .flatMap(post -> ServerResponse.ok().body(Mono.just(post),Post.class));
     }
 
