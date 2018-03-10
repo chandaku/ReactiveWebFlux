@@ -214,24 +214,18 @@ class PostHandler {
     }
 
     public Mono<ServerResponse> findById(ServerRequest serverRequest){
-        String title = "test";
-        Post postObj = Post.builder().title(title).content("content of " + title).build();
-        Flux<Post> flux = Flux.just(postObj);
-    return postRepository.findByTitle(serverRequest.queryParam("title").orElse(""))
-            .flatMap(post -> ServerResponse.ok().body(Mono.just(post),Post.class))
-            .onErrorResume(CustomException.class, e -> ServerResponse.notFound().build());
-           // .flatMap(post ->ServerResponse.notFound().build());
+    return postRepository.findById(serverRequest.queryParam("id").orElse(""))
+            .flatMap(post -> ServerResponse.ok().body(Mono.just(post),Post.class));
+    }
+
+    public Mono<ServerResponse> findByTitle(ServerRequest serverRequest){
+        Flux<Post> response = postRepository.findByTitle(serverRequest.queryParam("title").orElse(""));
+        return ServerResponse.ok().body(response,Post.class);
     }
 }
 
 interface PostRepository extends ReactiveMongoRepository<Post, String> {
-    Mono<Post> findByTitle(String title);
-}
-
-class CustomException extends RuntimeException {
-    public CustomException(String msg) {
-        super(msg);
-    }
+    Flux<Post> findByTitle(String title);
 }
 
 @Document
