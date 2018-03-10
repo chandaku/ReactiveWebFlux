@@ -1,6 +1,8 @@
 package com.example.demo;
 
+import java.net.URI;
 import java.time.LocalDateTime;
+import java.util.function.BiFunction;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -40,10 +42,13 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
+import org.springframework.web.reactive.function.server.ServerResponse.Context;
+import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import static org.springframework.web.reactive.function.server.RequestPredicates.GET;
+import static org.springframework.web.reactive.function.server.RequestPredicates.POST;
 import static org.springframework.web.reactive.function.server.RequestPredicates.accept;
 import static org.springframework.web.reactive.function.server.RouterFunctions.route;
 
@@ -94,11 +99,13 @@ class SecurityConfig {
         return http
                 .authorizeExchange()
                 .pathMatchers(HttpMethod.GET, "/posts/**").permitAll()
-                .pathMatchers(HttpMethod.DELETE, "/posts/**").hasRole("ADMIN")
-                .pathMatchers("/posts/**").authenticated()
+                //.pathMatchers(HttpMethod.DELETE, "/posts/**").hasRole("ADMIN")
+               // .pathMatchers("/posts/**")
+              //  .authenticated()
+
                 //.pathMatchers("/users/{user}/**").access(this::currentUserMatchesPath)
                 .anyExchange().permitAll()
-                .and()
+                .and().csrf().disable()
                 .build();
     }
 
@@ -165,15 +172,11 @@ class PostController {
         return this.posts.findAll();
     }
 
-    @PostMapping("")
-    public Mono<Post> create(@RequestBody Post post) {
-        return this.posts.save(post);
-    }
+//    @PostMapping("")
+//    public Mono<Post> create(@RequestBody Post post) {
+//        return this.posts.save(post);
+//    }
 
-   /* @GetMapping("/{id}")    public Mono<Post> get(@PathVariable("id") String id) {
-        return this.posts.findById(id);
-    }
-*/
     @PutMapping("/{id}")
     public Mono<Post> update(@PathVariable("id") String id, @RequestBody Post post) {
         return this.posts.findById(id)
@@ -200,7 +203,8 @@ class PostRouterFunction {
     @Bean
     public RouterFunction<ServerResponse> routes(PostHandler postHandler) {
         return route(GET("/posts/{id}").and(accept(MediaType.APPLICATION_JSON)), postHandler::findById)
-                .andRoute(GET("/posts/title/{title}"), postHandler::findByTitle);
+                .andRoute(GET("/posts/title/{title}"), postHandler::findByTitle)
+                .andRoute(POST("/posts"),postHandler::create);
     }
 
 }
@@ -224,6 +228,14 @@ class PostHandler {
         String title = serverRequest.pathVariable("title");
         Flux<Post> response = postRepository.findByTitle(title);
         return ServerResponse.ok().body(response,Post.class);
+    }
+
+    public Mono<ServerResponse> create(final ServerRequest serverRequest) {
+        Mono<Post> postMono = serverRequest.bodyToMono(Post.class);
+        return postMono
+                .flatMap(post -> postRepository.save(post))
+                .flatMap(post -> ServerResponse.created(URI.create("/posts/" + post.getId())).build());
+
     }
 }
 
