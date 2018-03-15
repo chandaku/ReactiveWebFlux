@@ -11,3 +11,8 @@ spring:
 logging:
   level:
     org.springframework.web: DEBUG
+
+app:
+   github:
+      username:
+      token:

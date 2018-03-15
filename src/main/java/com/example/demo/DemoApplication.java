@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
@@ -54,6 +55,7 @@ import static org.springframework.web.reactive.function.server.RouterFunctions.r
 
 @SpringBootApplication
 @EnableMongoAuditing
+@EnableConfigurationProperties(AppProperties.class)
 public class DemoApplication {
 
     public static void main(String[] args) {
@@ -156,46 +158,6 @@ class DataInitializer implements CommandLineRunner {
     }
 
 }
-
-@RestController()
-@RequestMapping(value = "/posts-deprecated")
-class PostController {
-
-    private final PostRepository posts;
-
-    public PostController(PostRepository posts) {
-        this.posts = posts;
-    }
-
-    @GetMapping("")
-    public Flux<Post> all() {
-        return this.posts.findAll();
-    }
-
-//    @PostMapping("")
-//    public Mono<Post> create(@RequestBody Post post) {
-//        return this.posts.save(post);
-//    }
-
-    @PutMapping("/{id}")
-    public Mono<Post> update(@PathVariable("id") String id, @RequestBody Post post) {
-        return this.posts.findById(id)
-                .map(p -> {
-                    p.setTitle(post.getTitle());
-                    p.setContent(post.getContent());
-
-                    return p;
-                })
-                .flatMap(p -> this.posts.save(p));
-    }
-
-    @DeleteMapping("/{id}")
-    public Mono<Void> delete(@PathVariable("id") String id) {
-        return this.posts.deleteById(id);
-    }
-
-}
-
 
 @Component
 class PostRouterFunction {
