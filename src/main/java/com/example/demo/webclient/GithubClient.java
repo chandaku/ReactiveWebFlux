@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
@@ -35,6 +36,8 @@ public class GithubClient {
                         .basicAuthentication(appProperties.getGithub().getUsername(),
                                 appProperties.getGithub().getToken()))
                 .filter(logRequest())
+                .filter(logRequest1())
+                .filter(logResposneStatus())
                 .build();
     }
 
@@ -67,6 +70,12 @@ public class GithubClient {
                 .uri("/repos/{owner}/{repo}", owner, repo)
                 .body(BodyInserters.fromObject(editRepoRequest))
                 .retrieve()
+                .onStatus(HttpStatus::is4xxClientError, clientResponse ->
+                        Mono.error(new RuntimeException())
+                )
+                .onStatus(HttpStatus::is5xxServerError, clientResponse ->
+                        Mono.error(new RuntimeException())
+                )
                 .bodyToMono(GithubRepo.class);
     }
 
@@ -84,5 +93,21 @@ public class GithubClient {
                     .forEach((name, values) -> values.forEach(value -> logger.info("{}={}", name, value)));
             return next.exchange(clientRequest);
         };
+    }
+
+    private ExchangeFilterFunction logRequest1() {
+        return ExchangeFilterFunction.ofRequestProcessor(clientRequest -> {
+            logger.info("Request: {} {}", clientRequest.method(), clientRequest.url());
+            clientRequest.headers()
+                    .forEach((name, values) -> values.forEach(value -> logger.info("{}={}", name, value)));
+            return Mono.just(clientRequest);
+        });
+    }
+
+    private ExchangeFilterFunction logResposneStatus() {
+        return ExchangeFilterFunction.ofResponseProcessor(clientResponse -> {
+            logger.info("Response Status {}", clientResponse.statusCode());
+            return Mono.just(clientResponse);
+        });
     }
 }
