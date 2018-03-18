@@ -55,7 +55,11 @@ public class GithubClient {
                 .uri("/user/repos")
                 .body(Mono.just(createRepoRequest), RepoRequest.class)
                 .retrieve()
-                .bodyToMono(GithubRepo.class);
+                .bodyToMono(GithubRepo.class)
+                .onErrorResume(throwable -> {
+                    System.out.print("Error Resumed");
+                   return Mono.just(GithubRepo.builder().build());
+                });
     }
 
     public Mono<GithubRepo> getGithubRepository(String owner, String repo) {

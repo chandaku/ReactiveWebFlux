@@ -14,5 +14,5 @@ logging:
 
 app:
    github:
-      username:
-      token:
+      username: chandaku
+      token: b07a7935d66170c3b4b445a0c9cd160ae15a4449

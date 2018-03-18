@@ -2,8 +2,9 @@ package com.example.demo;
 
 import java.net.URI;
 import java.time.LocalDateTime;
-import java.util.function.BiFunction;
 
+import com.example.demo.error.ErrorHandler;
+import com.example.demo.exception.EntityNotFound;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -32,19 +33,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.authorization.AuthorizationContext;
 import org.springframework.stereotype.Component;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
-import org.springframework.web.reactive.function.server.ServerResponse.Context;
-import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -176,14 +167,27 @@ class PostHandler {
 
     PostRepository postRepository;
 
-    public PostHandler(final PostRepository postRepository) {
+    ErrorHandler errorHandler;
+
+    public PostHandler(final PostRepository postRepository, final ErrorHandler errorHandler) {
         this.postRepository = postRepository;
+        this.errorHandler = errorHandler;
     }
 
     public Mono<ServerResponse> findById(ServerRequest serverRequest){
+        return getServerResponseMono(serverRequest)
+                .onErrorResume(
+                errorHandler::throwableErrorOccurred
+                );
+    }
+
+    private Mono<ServerResponse> getServerResponseMono(final ServerRequest serverRequest) {
         String id = serverRequest.pathVariable("id");
         return postRepository.findById(id)
-            .flatMap(post -> ServerResponse.ok().body(Mono.just(post),Post.class));
+            .flatMap(post -> ServerResponse.ok().body(Mono.just(post),Post.class))
+                .switchIfEmpty(
+                        Mono.error(new EntityNotFound("Required Object Not Found"))
+                );
     }
 
     public Mono<ServerResponse> findByTitle(ServerRequest serverRequest){
